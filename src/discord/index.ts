@@ -7,7 +7,11 @@ import { CONFIG_OPTION, getIrcConfig } from '../TypedConfig';
 import { applySpeedLimit } from '../libs/ChatLimiter';
 
 const logger = log4js.getLogger('cli');
-
+import { startHttpServer } from '../httpServer';
+if (process.env.REPLIT_DB_URL !== undefined) {
+  logger.info('Replit environment detected. Starting a simple http server.');
+  startHttpServer();
+}
 console.log('Starting up...');
 
 const config_path = './config/log_discord.json';

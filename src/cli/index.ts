@@ -6,7 +6,11 @@ import { CONFIG_OPTION, getIrcConfig } from '../TypedConfig';
 import log4js from 'log4js';
 import { applySpeedLimit } from '../libs/ChatLimiter';
 const logger = log4js.getLogger('cli');
-
+import { startHttpServer } from '../httpServer';
+if (process.env.REPLIT_DB_URL !== undefined) {
+  logger.info('Replit environment detected. Starting a simple http server.');
+  startHttpServer();
+}
 console.log('Starting up...');
 
 const config_path = (process.env.NODE_ENV === 'production')
