@@ -78,11 +78,11 @@ export class DiscordBot {
       if (interaction.isCommand()) {
         const command = interaction.client.commands.get(interaction.commandName);
         if (!command) return;
-        logger.info(`${interaction.guildId ? `[G ${interaction.guildId} | U ${interaction.user.id}]` : `[U ${interaction.user.id}]`} Processing command ${interaction.commandName}`);
+        logger.info(`${interaction.guildId ? `Guild: ${interaction.guildId} | User: ${interaction.user.id}` : `User: ${interaction.user.id}`} Running command ${interaction.commandName}`);
         try {
           await command.execute(interaction);
         } catch (e: any) {
-          logger.error(`@discordClient#interactionCreate:\n${interaction.guildId ? `[G ${interaction.guildId} | U ${interaction.user.id}]` : `[U ${interaction.user.id}]`} Caught error executing command ${interaction.commandName}\n${e.message}\n${e.stack}`);
+          logger.error(`@discordClient#interactionCreate:\n${interaction.guildId ? `Guild: ${interaction.guildId} | User: ${interaction.user.id}` : `User: ${interaction.user.id}`} Caught error running command ${interaction.commandName}\n${e.message}\n${e.stack}`);
           const replyData: MessageEmbedReplyData = {
             embeds: [
               new MessageEmbed()
