@@ -27,6 +27,12 @@ export interface DiscordBotConfig {
   clientId: string;
 }
 
+type MessageEmbedReplyData = {
+  embeds: [
+    MessageEmbed
+  ]
+  ephemeral?: boolean;
+}
 export type GuildCommandInteraction = CommandInteraction & { guildId: string; }
 export type OahrSharedObjects = Record<string, unknown>;
 
@@ -78,13 +84,7 @@ export class DiscordBot {
           await command.execute(interaction);
         } catch (e: any) {
           logger.error(`@discordClient#interactionCreate:\n${interaction.guildId ? `[G ${interaction.guildId} | U ${interaction.user.id}]` : `[U ${interaction.user.id}]`} Caught error executing command ${interaction.commandName}\n${e.message}\n${e.stack}`);
-          type MessageData = {
-            embeds: [
-              MessageEmbed
-            ]
-            ephemeral?: boolean;
-          }
-          const replyData: MessageData = {
+          const replyData: MessageEmbedReplyData = {
             embeds: [
               new MessageEmbed()
                 .setDescription(`Command \`${interaction.commandName}\` caught an error.`)
