@@ -4,19 +4,39 @@
  * admin roleが正しく登録される
  * admin role以外のユーザーはスラッシュコマンド、ボタンコマンドを利用できない
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DiscordBot = void 0;
+exports.DiscordBot = exports.logger = void 0;
 const log4js_1 = __importDefault(require("log4js"));
 const discord_js_1 = require("discord.js");
-const OahrDiscord_1 = require("./OahrDiscord");
+const rest_1 = require("@discordjs/rest");
+const v10_1 = require("discord-api-types/v10");
 const DiscordAppender_1 = require("./DiscordAppender");
-const BotCommand_1 = require("./BotCommand");
 const CommandParser_1 = require("../parsers/CommandParser");
 const TypedConfig_1 = require("../TypedConfig");
-const logger = log4js_1.default.getLogger('discord');
+const fs_1 = __importDefault(require("fs"));
+exports.logger = log4js_1.default.getLogger('discord');
 const ADMIN_ROLE = {
     name: 'ahr-admin',
     color: 'ORANGE',
@@ -31,13 +51,14 @@ class DiscordBot {
         this.sharedObjects = {};
     }
     async start() {
+        this.discordClient.commands = new discord_js_1.Collection();
         this.discordClient.once('ready', async (cl) => {
             for (const g of cl.guilds.cache.values()) {
                 await this.registerCommandsAndRoles(g);
             }
             (0, DiscordAppender_1.setContext)(cl, this.ahrs);
-            logger.info('The discord bot is ready.');
-            logger.info(`Invite link => ${this.generateInviteLink()}`);
+            exports.logger.info('The discord bot is ready.');
+            exports.logger.info(`Invite link => ${this.generateInviteLink()}`);
         });
         this.discordClient.on('guildCreate', async (guild) => {
             console.log(`guildCreate ${guild.name}`);
@@ -53,7 +74,31 @@ class DiscordBot {
                 return;
             }
             if (interaction.isCommand()) {
-                await this.handleCommandInteraction(interaction);
+                const command = interaction.client.commands.get(interaction.commandName);
+                console.log(command);
+                if (!command)
+                    return;
+                exports.logger.info(`${interaction.guildId ? `[G ${interaction.guildId} | U ${interaction.user.id}]` : `[U ${interaction.user.id}]`} Processing command ${interaction.commandName}`);
+                try {
+                    await command.execute(interaction);
+                }
+                catch (e) {
+                    exports.logger.error(`@discordClient#interactionCreate:\n${interaction.guildId ? `[G ${interaction.guildId} | U ${interaction.user.id}]` : `[U ${interaction.user.id}]`} Caught error executing command ${interaction.commandName}\n${e.message}\n${e.stack}`);
+                    const replyData = {
+                        embeds: [
+                            new discord_js_1.MessageEmbed()
+                                .setDescription(`Command \`${interaction.commandName}\` caught an error.`)
+                                .setColor('DARK_RED'),
+                        ],
+                    };
+                    if (!interaction.replied && !interaction.deferred) {
+                        replyData.ephemeral = true;
+                        await interaction.reply(replyData);
+                    }
+                    else {
+                        await interaction.editReply(replyData);
+                    }
+                }
             }
             if (interaction.isButton()) {
                 const m = /^(\w+),#mp_(\d+)$/.exec(interaction.customId);
@@ -67,17 +112,17 @@ class DiscordBot {
         }
         catch (e) {
             if (e?.code === 'TOKEN_INVALID' && e.message) {
-                logger.error(e.message);
+                exports.logger.error(e.message);
                 if (this.cfg.token === '') {
-                    logger.error('The discord bot token is empty.');
+                    exports.logger.error('The discord bot token is empty.');
                 }
                 else {
-                    logger.error(`The discord bot token provided was invalid.\n"${this.cfg.token}"`);
+                    exports.logger.error(`The discord bot token provided was invalid.\n"${this.cfg.token}"`);
                 }
-                logger.error('Check the setup guide -> https://github.com/Meowhal/osu-ahr#discord-integration');
+                exports.logger.error('Check the setup guide -> https://github.com/Meowhal/osu-ahr#discord-integration');
             }
             else {
-                logger.error(`@DiscordBot#start\n${e.message}\n${e.stack}`);
+                exports.logger.error(`@DiscordBot#start\n${e.message}\n${e.stack}`);
             }
             process.exit();
         }
@@ -86,7 +131,25 @@ class DiscordBot {
         return member.roles.cache.find(f => f.name === ADMIN_ROLE.name) !== undefined;
     }
     async registerCommandsAndRoles(guild) {
-        await guild.commands.set(BotCommand_1.BotCommands);
+        const applicationId = this.cfg.clientId;
+        const guildId = guild.id;
+        const botToken = this.cfg.token;
+        const commands = [];
+        const commandFiles = fs_1.default.readdirSync(`${__dirname}/commands`).filter((file) => file.endsWith('.js') || file.endsWith('.ts'));
+        for (const file of commandFiles) {
+            const command = await Promise.resolve().then(() => __importStar(require(`${__dirname}/commands/${file}`)));
+            this.discordClient.commands.set(command.data.name, command);
+            commands.push(command.data.toJSON());
+        }
+        const rest = new rest_1.REST({ version: '9' }).setToken(botToken);
+        try {
+            await rest.put(v10_1.Routes.applicationGuildCommands(applicationId, String(guildId)), {
+                body: commands,
+            });
+        }
+        catch (e) {
+            exports.logger.error(`@DiscordBot#registerCommandsAndRoles\n${e.message}\n${e.stack}`);
+        }
         await this.registerAhrAdminRole(guild);
     }
     async registerAhrAdminRole(guild) {
@@ -95,193 +158,6 @@ class DiscordBot {
             role = await guild.roles.create(ADMIN_ROLE);
         }
         return role.id;
-    }
-    async handleCommandInteraction(interaction) {
-        switch (interaction.commandName) {
-            case 'make':
-                await this.make(interaction);
-                break;
-            case 'enter':
-                await this.enter(interaction);
-                break;
-            case 'info':
-                await this.info(interaction);
-                break;
-            case 'say':
-                await this.say(interaction);
-                break;
-            case 'config':
-                break;
-            case 'close':
-                await this.close(interaction);
-                break;
-            case 'quit':
-                await this.quit(interaction);
-                break;
-        }
-    }
-    async make(interaction) {
-        await interaction.deferReply();
-        if (!interaction.guild) {
-            logger.error('This command only works in servers.');
-            await interaction.editReply('😫 This command only works in servers.');
-            return;
-        }
-        const name = interaction.options.getString('lobby_name', true);
-        let ahr;
-        try {
-            ahr = new OahrDiscord_1.OahrDiscord(this.ircClient, this.sharedObjects);
-            await ahr.makeLobbyAsync(name);
-        }
-        catch (e) {
-            logger.error(`@DiscordBot#make\n${e}`);
-            await interaction.editReply(`😫 There was an error while making a tournament lobby. ${e}`);
-            ahr?.lobby.destroy();
-            return;
-        }
-        try {
-            const lobbyNumber = ahr.lobby.lobbyId ?? 'new_lobby';
-            this.registeAhr(ahr, interaction);
-            await this.updateMatchSummary(ahr);
-            await interaction.editReply(`😀 Successfully made a lobby.\n[Lobby History](https://osu.ppy.sh/mp/${lobbyNumber})`);
-        }
-        catch (e) {
-            logger.error(`@DiscordBot#make\n${e.message}\n${e.stack}`);
-            await interaction.editReply(`There was an error while making a discord channel. ${e.message}`);
-        }
-    }
-    async enter(interaction) {
-        await interaction.deferReply();
-        const lobbyNumber = this.resolveLobbyId(interaction, true);
-        const lobbyId = `#mp_${lobbyNumber}`;
-        if (!lobbyNumber) {
-            await interaction.editReply('error lobby_id required.');
-            return;
-        }
-        if (!interaction.guild) {
-            logger.error('This command only works in servers.');
-            await interaction.editReply('😫 This command only works in servers.');
-            return;
-        }
-        if (this.ahrs[lobbyId]) {
-            this.ahrs[lobbyId].lobby.logger.warn('The bot has already entered the lobby.');
-            await interaction.editReply('I have already entered the lobby.');
-            return;
-        }
-        let ahr;
-        try {
-            ahr = new OahrDiscord_1.OahrDiscord(this.ircClient, this.sharedObjects);
-            await ahr.enterLobbyAsync(lobbyId);
-        }
-        catch (e) {
-            logger.error(`@DiscordBot#enter\n${e}`);
-            await interaction.editReply(`😫 There was an error while entering a tournament lobby. ${e}`);
-            ahr?.lobby.destroy();
-            return;
-        }
-        try {
-            this.registeAhr(ahr, interaction);
-            // ロビー用チャンネルからenterコマンドを引数無しで呼び出している場合はそのチャンネルでログ転送を開始する
-            const ch = interaction.guild?.channels.cache.get(interaction.channelId);
-            if (ch && lobbyId === (`#${ch.name}`)) {
-                ahr.startTransferLog(ch.id);
-            }
-            await this.updateMatchSummary(ahr);
-            await interaction.editReply(`😀 Successfully entered the lobby.\n[Lobby History](https://osu.ppy.sh/mp/${lobbyNumber})`);
-        }
-        catch (e) {
-            logger.error(`@DiscordBot#enter\n${e.message}\n${e.stack}`);
-            await interaction.editReply(`😫 There was an error while making a discord channel. ${e}`);
-        }
-    }
-    async info(interaction) {
-        await interaction.deferReply();
-        const lobbyId = this.resolveLobbyId(interaction);
-        if (!lobbyId) {
-            await interaction.editReply('Please specify a lobby ID.');
-            return;
-        }
-        if (!interaction.guild) {
-            logger.error('This command only works in servers.');
-            await interaction.editReply('😫 This command only works in servers.');
-            return;
-        }
-        const ahr = this.ahrs[lobbyId];
-        if (!ahr) {
-            await interaction.editReply('Invalid lobby specified.');
-            return;
-        }
-        try {
-            await interaction.editReply({ embeds: [ahr.createDetailInfoEmbed()] });
-        }
-        catch (e) {
-            logger.error(`@DiscordBot#info\n${e.message}\n${e.stack}`);
-            await interaction.editReply(`😫 There was an error while handling this command. ${e.message}`);
-        }
-    }
-    async say(interaction) {
-        await interaction.deferReply();
-        const lobbyId = this.resolveLobbyId(interaction);
-        if (!lobbyId) {
-            await interaction.editReply('Please specify a lobby ID.');
-            return;
-        }
-        const ahr = this.ahrs[lobbyId];
-        if (!ahr) {
-            await interaction.editReply('Invalid lobby specified.');
-            return;
-        }
-        const msg = interaction.options.getString('message', true);
-        if ((msg.startsWith('!') && !msg.startsWith('!mp ')) || msg.startsWith('*')) {
-            ahr.lobby.RaiseReceivedChatCommand(ahr.lobby.GetOrMakePlayer(ahr.client.nick), msg);
-            await interaction.editReply(`Executed: ${msg}`);
-        }
-        else {
-            ahr.lobby.SendMessage(msg);
-            await interaction.editReply(`Sent: ${msg}`);
-        }
-    }
-    async close(interaction) {
-        await interaction.deferReply();
-        const lobbyId = this.resolveLobbyId(interaction);
-        if (!lobbyId) {
-            await interaction.editReply('Please specify a lobby ID.');
-            return;
-        }
-        const ahr = this.ahrs[lobbyId];
-        if (!ahr) {
-            await interaction.editReply('Invalid lobby specified.');
-            return;
-        }
-        try {
-            await ahr.lobby.CloseLobbyAsync();
-            await interaction.editReply('Successfully closed a lobby.');
-        }
-        catch (e) {
-            logger.error(`@DiscordBot#close\n${e}`);
-            await interaction.editReply(`😫 There was an error while closing a lobby. ${e}`);
-        }
-    }
-    async quit(interaction) {
-        await interaction.deferReply();
-        const lobbyId = this.resolveLobbyId(interaction);
-        if (!lobbyId) {
-            await interaction.editReply('Please specify a lobby ID.');
-            return;
-        }
-        const ahr = this.ahrs[lobbyId];
-        if (!ahr) {
-            await interaction.editReply('Invalid lobby specified.');
-            return;
-        }
-        try {
-            await ahr.lobby.QuitLobbyAsync();
-            await interaction.editReply('Successfully stopped managing a lobby.');
-        }
-        catch (e) {
-            logger.error(`@DiscordBot#quit\n${e}`);
-            await interaction.editReply(`😫 There was an error while quiting a lobby. ${e}`);
-        }
     }
     async handleButtonInteraction(interaction, command, lobbyNumber) {
         if (!interaction.guild)
@@ -314,7 +190,7 @@ class DiscordBot {
             await this.updateMatchSummary(ahr);
         }
         catch (e) {
-            logger.error(`@DiscordBot#handleButtonInteraction\n${e.message}\n${e.stack}`);
+            exports.logger.error(`@DiscordBot#handleButtonInteraction\n${e.message}\n${e.stack}`);
         }
     }
     async getOrCreateMatchChannel(guild, lobbyNumber) {
@@ -474,15 +350,15 @@ class DiscordBot {
         catch (e) {
             if (e instanceof discord_js_1.DiscordAPIError) {
                 if (e.message === 'Missing Permissions') {
-                    logger.error(`Missing Permissions. Invite this bot again.\nInvite link => ${this.generateInviteLink()}`);
+                    exports.logger.error(`Missing Permissions. Invite this bot again.\nInvite link => ${this.generateInviteLink()}`);
                     return;
                 }
                 else if (e.message === 'Missing Access') {
-                    logger.error('Missing Access. The bot does not have the Permission to manage the #match channel, please delete the #match channel or give the bot editing privileges.');
+                    exports.logger.error('Missing Access. The bot does not have the Permission to manage the #match channel, please delete the #match channel or give the bot editing privileges.');
                     return;
                 }
             }
-            logger.error(`@DiscordBot#updateMatchSummary\n${e.message}\n${e.stack}`);
+            exports.logger.error(`@DiscordBot#updateMatchSummary\n${e.message}\n${e.stack}`);
             ahr.updateSummaryMessage = false;
         }
     }
@@ -511,7 +387,7 @@ class DiscordBot {
             }
         }
         catch (e) {
-            logger.error(`@DiscordBot#deleteMatchSummary\n${e.message}\n${e.stack}`);
+            exports.logger.error(`@DiscordBot#deleteMatchSummary\n${e.message}\n${e.stack}`);
         }
     }
 }
