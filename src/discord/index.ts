@@ -1,7 +1,7 @@
-import { Client, Intents } from 'discord.js';
+import { Client, Collection, Intents } from 'discord.js';
 import log4js from 'log4js';
 import { DiscordBot } from './DiscordBot';
-import { logIrcEvent, logPrivateMessage } from '../IIrcClient';
+import { IIrcClient, logIrcEvent, logPrivateMessage } from '../IIrcClient';
 import * as irc from '../libs/irc';
 import { CONFIG_OPTION, getIrcConfig } from '../TypedConfig';
 import { applySpeedLimit } from '../libs/ChatLimiter';
@@ -39,8 +39,16 @@ try {
   const discordClient = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_INTEGRATIONS, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_MESSAGES] });
 
   const bot = new DiscordBot(ircClient, discordClient);
+  discordClient.ahrBot = bot;
   bot.start();
 } catch (e: any) {
   logger.error(`@discord-index\n${e}`);
   process.exit(1);
+}
+
+declare module 'discord.js' {
+  interface Client {
+    commands: Collection<unknown, any>;
+    ahrBot: DiscordBot;
+  }
 }
