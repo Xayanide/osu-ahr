@@ -77,7 +77,6 @@ export class DiscordBot {
       }
       if (interaction.isCommand()) {
         const command = interaction.client.commands.get(interaction.commandName);
-        console.log(command);
         if (!command) return;
         logger.info(`${interaction.guildId ? `[G ${interaction.guildId} | U ${interaction.user.id}]` : `[U ${interaction.user.id}]`} Processing command ${interaction.commandName}`);
         try {
