@@ -26,8 +26,13 @@ const DiscordBot_1 = require("./DiscordBot");
 const IIrcClient_1 = require("../IIrcClient");
 const TypedConfig_1 = require("../TypedConfig");
 const ChatLimiter_1 = require("../libs/ChatLimiter");
+const httpServer_1 = require("../httpServer");
 const logger = (0, Loggers_1.getLogger)('pre');
 logger.info('Starting up...');
+if (process.env.REPLIT_DB_URL !== undefined) {
+    logger.info('Replit environment detected. Starting a simple http server.');
+    (0, httpServer_1.startHttpServer)();
+}
 try {
     TypedConfig_1.CONFIG_OPTION.USE_ENV = true;
     const c = (0, TypedConfig_1.getIrcConfig)();
