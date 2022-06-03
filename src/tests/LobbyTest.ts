@@ -5,12 +5,11 @@ import { DummyIrcClient } from '../dummies/DummyIrcClient';
 import { DummyLobbyPlugin } from '../dummies/DummyLobbyPlugin';
 import { StatResult, StatStatuses } from '../parsers/StatParser';
 import { MpSettingsCases } from './cases/MpSettingsCases';
-import log4js from 'log4js';
 import tu from './TestUtils';
 
 describe('LobbyTest', function () {
   before(function () {
-    log4js.configure('config/log_mocha_silent.json');
+    tu.configMochaAsSilent();
   });
   interface LobbyTestBasicSet {
     ircClient: DummyIrcClient;
@@ -63,7 +62,7 @@ describe('LobbyTest', function () {
         await lobby.MakeLobbyAsync(name);
         assert.fail();
       } catch (e: any) {
-        assert.equal(e.message, 'title is empty');
+        assert.equal(e.message, 'The lobby title is empty');
       }
     });
 
@@ -76,7 +75,7 @@ describe('LobbyTest', function () {
         lobby.MakeLobbyAsync('2');
         assert.fail();
       } catch (e: any) {
-        assert.equal(e.message, 'A lobby has already been made.');
+        assert.equal(e.message, 'A lobby has already been made');
       }
     });
 
@@ -88,7 +87,7 @@ describe('LobbyTest', function () {
         await lobby.CloseLobbyAsync();
         assert.fail();
       } catch (e: any) {
-        assert.equal(e.message, 'No lobby to close.');
+        assert.equal(e.message, 'No lobby to close');
       }
     });
   });

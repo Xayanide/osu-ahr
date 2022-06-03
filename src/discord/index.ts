@@ -1,22 +1,19 @@
+import { getLogger } from '../Loggers';
+
+import * as irc from '../libs/irc';
 import { Client, Intents } from 'discord.js';
-import log4js from 'log4js';
 import { DiscordBot } from './DiscordBot';
 import { logIrcEvent, logPrivateMessage } from '../IIrcClient';
-import * as irc from '../libs/irc';
 import { CONFIG_OPTION, getIrcConfig } from '../TypedConfig';
 import { applySpeedLimit } from '../libs/ChatLimiter';
-
-const logger = log4js.getLogger('cli');
 import { startHttpServer } from '../httpServer';
+
+const logger = getLogger('pre');
+logger.info('Starting up...');
 if (process.env.REPLIT_DB_URL !== undefined) {
   logger.info('Replit environment detected. Starting a simple http server.');
   startHttpServer();
 }
-console.log('Starting up...');
-
-const config_path = './config/log_discord.json';
-
-log4js.configure(config_path);
 
 try {
   CONFIG_OPTION.USE_ENV = true;

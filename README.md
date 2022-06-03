@@ -74,24 +74,21 @@ Discord
 
 # Recent Changes
 
+## 1.6.1
+
++ Improve texts and error messages
+  + Fixed grammatical errors and inconsistencies in displayed text
+  + This work was led by [Xayanide](https://github.com/Xayanide). Thanks!
++ Fixed problem with cli waiting for input when lobby is closed
++ Log files are now stored separately for chat-related and system-related files.
+
 ## 1.6.0
 
 + Enviroment Variable Supports
   + Almost all configs that can be set in local.json can also be set from environment variables.
   + The environment variable name should be in the form `ahr_[category]_[config_name]`.
+  + Improve texts & grammaticalization
 + Fixed discord Permission Issue.
-
-e.g. bash
-
-```bash
-> ahr_irc_nick=meowhal
-> ahr_irc_password=1234abcd
-> npm run start
-
-starting up...
-[INFO] config - loaded env:ahr_irc_nick : meowhal
-[INFO] config - loaded env:ahr_irc_password : 1234abcd
-```
 
 # Setup
 
@@ -150,7 +147,7 @@ Note: You can also run your bot on discord. See the [Discord Integration](#disco
 # Configuration
 
 You can edit local.json to configure the bot's behavior.
-It is also possible to set values via environment variables.
+It is also possible to set values via environment variables. (.env files are also supported.)
 The format of environment variable name is `ahr_[section_name]_[config_name]`.
 
 ## IRC Section
@@ -549,3 +546,5 @@ The `/say [message]` command is used to forward a message to the in-game chat. T
 + [qqzzy](https://osu.ppy.sh/users/10911588)
   + He gives me various insights.
   + <https://github.com/jramseygreen/osu_bot_framework-v3>
++ [Xayanide](https://github.com/Xayanide)
+  + He made various contributions to the project.

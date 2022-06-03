@@ -1,25 +1,25 @@
 import { IIrcClient } from '../IIrcClient';
 import { LobbyStatus } from '../Lobby';
 import { Player } from '../Player';
-import log4js from 'log4js';
 import { OahrBase } from '../cli/OahrBase';
 import { OahrSharedObjects } from './DiscordBot';
 import { MessageActionRow, MessageButton, MessageEmbed } from 'discord.js';
 import { MessageButtonStyles } from 'discord.js/typings/enums';
+import { getLogger } from '../Loggers';
 
-const logger = log4js.getLogger('discord');
+const logger = getLogger('discord');
 
 const LOBBY_STAT = {
   match: {
-    text: 'match',
+    text: 'Match',
     color: 0x33ff33
   },
   idle: {
-    text: 'idle',
+    text: 'Idle',
     color: 0x00ccff
   },
   closed: {
-    text: 'closed',
+    text: 'Closed',
     color: 0x800000
   }
 };
@@ -65,7 +65,7 @@ export class OahrDiscord extends OahrBase {
     const lobby = this.lobby;
     const lid = lobby.lobbyId ?? '';
     const name = lobby.lobbyName ?? '';
-    const host = lobby.host?.name ?? 'none';
+    const host = lobby.host?.name ?? 'None';
 
 
     const embed = new MessageEmbed().setColor('BLURPLE').setTitle('Lobby Information').setURL(`https://osu.ppy.sh/community/matches/${lid}`);
@@ -104,7 +104,7 @@ export class OahrDiscord extends OahrBase {
     const stat = lobby.status === LobbyStatus.Left ? LOBBY_STAT.closed : lobby.isMatching ? LOBBY_STAT.match : LOBBY_STAT.idle;
     const lid = lobby.lobbyId ?? '';
     const name = lobby.lobbyName ?? '';
-    const host = lobby.host?.name ?? 'none';
+    const host = lobby.host?.name ?? 'None';
 
     const embed = new MessageEmbed().setColor(stat.color).setTitle(`#mp_${lid}`).setURL(`https://osu.ppy.sh/community/matches/${lid}`);
     embed.addField('Title', `\`${name}\``, true);
