@@ -325,7 +325,7 @@ export class Lobby {
       this.ircClient.say(this.channel, message);
       this.ircClient.emit('sentMessage', this.channel, message);
       this.SentMessage.emit({ message });
-      //this.chatlogger.trace(`bot:${message}`);
+      //this.chatlogger.trace(`Bot: ${message}`);
     }
   }
 
