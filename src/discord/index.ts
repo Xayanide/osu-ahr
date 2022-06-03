@@ -6,9 +6,14 @@ import { DiscordBot } from './DiscordBot';
 import { logIrcEvent, logPrivateMessage } from '../IIrcClient';
 import { CONFIG_OPTION, getIrcConfig } from '../TypedConfig';
 import { applySpeedLimit } from '../libs/ChatLimiter';
+import { startHttpServer } from '../httpServer';
 
 const logger = getLogger('pre');
 logger.info('Starting up...');
+if (process.env.REPLIT_DB_URL !== undefined) {
+  logger.info('Replit environment detected. Starting a simple http server.');
+  startHttpServer();
+}
 
 try {
   CONFIG_OPTION.USE_ENV = true;

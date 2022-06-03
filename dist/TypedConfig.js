@@ -120,7 +120,7 @@ function loadEnvConfigWithTypeHint(category, hints, env) {
     }
     if (exports.CONFIG_OPTION.PRINT_LOADED_ENV_CONFIG) {
         for (const key in r) {
-            configLogger.info(`Loaded environment key: ${genEnvKey(category, key)}=${r[key]}`);
+            configLogger.info(`Loaded environment key: ${genEnvKey(category, key)}`);
         }
     }
     return r;
